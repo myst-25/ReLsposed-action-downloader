@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReLSPosed Downloads</title>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -18,21 +19,25 @@
             padding: 20px;
             box-sizing: border-box;
         }
+
         h1 {
             font-weight: 700;
             margin-bottom: 2rem;
             line-height: 1.2;
         }
+
         .container {
             text-align: center;
             width: 100%;
             max-width: 400px;
         }
+
         .buttons {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
+
         .btn {
             display: block;
             background-color: #000;
@@ -44,21 +49,38 @@
             transition: background-color 0.2s, transform 0.1s;
             text-align: center;
             font-size: 16px;
+            opacity: 0.6;
+            pointer-events: none;
         }
+
+        .btn.ready {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         .btn:hover {
             background-color: #333;
         }
+
         .btn:active {
             transform: scale(0.98);
         }
+
         .btn-secondary {
             background-color: #fff;
             color: #000;
             border: 1px solid #e4e4e7;
         }
+
         .btn-secondary:hover {
             background-color: #f4f4f5;
             border-color: #d4d4d8;
+        }
+
+        .status {
+            font-size: 14px;
+            margin-top: 12px;
+            color: #71717a;
         }
 
         @media (min-width: 480px) {
@@ -73,13 +95,68 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>ReLSPosed Downloads</h1>
+
         <div class="buttons">
-            <a href="/release" class="btn">Download Release</a>
-            <a href="/debug" class="btn btn-secondary">Download Debug</a>
+            <a id="releaseBtn" class="btn">Loading Release…</a>
+            <a id="debugBtn" class="btn btn-secondary">Loading Debug…</a>
         </div>
+
+        <div class="status" id="status">Fetching latest build…</div>
     </div>
+
+    <script>
+        async function loadLatest() {
+            const status = document.getElementById("status");
+            const releaseBtn = document.getElementById("releaseBtn");
+            const debugBtn = document.getElementById("debugBtn");
+
+            try {
+                const res = await fetch(
+                    "https://api.github.com/repos/myst-25/ReLSPosed/releases/latest"
+                );
+
+                const data = await res.json();
+
+                const release = data.assets.find(a =>
+                    a.name.includes("zygisk-release")
+                );
+
+                const debug = data.assets.find(a =>
+                    a.name.includes("zygisk-debug")
+                );
+
+                if (!release || !debug) {
+                    throw new Error("Files not found in release");
+                }
+
+                releaseBtn.href = release.browser_download_url;
+                debugBtn.href = debug.browser_download_url;
+
+                releaseBtn.textContent = "Download Release";
+                debugBtn.textContent = "Download Debug";
+
+                releaseBtn.classList.add("ready");
+                debugBtn.classList.add("ready");
+
+                status.textContent = `Latest: ${data.tag_name}`;
+            }
+            catch (err) {
+                console.error(err);
+                status.textContent = "Failed to load latest build. Open Releases page.";
+                releaseBtn.href = "https://github.com/myst-25/ReLSPosed/releases/latest";
+                debugBtn.href = "https://github.com/myst-25/ReLSPosed/releases/latest";
+                releaseBtn.classList.add("ready");
+                debugBtn.classList.add("ready");
+                releaseBtn.textContent = "Open Releases";
+                debugBtn.style.display = "none";
+            }
+        }
+
+        loadLatest();
+    </script>
 </body>
 </html>
