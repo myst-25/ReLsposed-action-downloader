@@ -12,30 +12,44 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             color: #18181b;
+            padding: 20px;
+            box-sizing: border-box;
         }
         h1 {
             font-weight: 700;
             margin-bottom: 2rem;
+            line-height: 1.2;
         }
         .container {
             text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
         .btn {
-            display: inline-block;
+            display: block;
             background-color: #000;
             color: #fff;
-            padding: 12px 24px;
-            margin: 10px;
+            padding: 14px 24px;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 500;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, transform 0.1s;
+            text-align: center;
+            font-size: 16px;
         }
         .btn:hover {
             background-color: #333;
+        }
+        .btn:active {
+            transform: scale(0.98);
         }
         .btn-secondary {
             background-color: #fff;
@@ -46,13 +60,26 @@
             background-color: #f4f4f5;
             border-color: #d4d4d8;
         }
+
+        @media (min-width: 480px) {
+            .buttons {
+                flex-direction: row;
+                justify-content: center;
+            }
+            .btn {
+                padding: 12px 24px;
+                min-width: 160px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>ReLSPosed Downloads</h1>
-        <a href="/release" class="btn">Download Release</a>
-        <a href="/debug" class="btn btn-secondary">Download Debug</a>
+        <div class="buttons">
+            <a href="/release" class="btn">Download Release</a>
+            <a href="/debug" class="btn btn-secondary">Download Debug</a>
+        </div>
     </div>
 </body>
 </html>
