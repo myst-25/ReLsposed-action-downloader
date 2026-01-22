@@ -1,9 +1,13 @@
+const owner = "YOUR_OWNER";
+const repo = "YOUR_REPO";
+const workflowFile = "build.yml";
+
 module.exports = async (req, res) => {
   const { type = 'release' } = req.query;
-  const { GITHUB_TOKEN, REPO_OWNER, REPO_NAME, WORKFLOW_ID } = process.env;
+  const { GITHUB_TOKEN } = process.env;
 
-  if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME || !WORKFLOW_ID) {
-    console.error('Missing configuration');
+  if (!GITHUB_TOKEN) {
+    console.error('Missing configuration: GITHUB_TOKEN');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
@@ -15,7 +19,7 @@ module.exports = async (req, res) => {
     };
 
     // 1. Get latest run
-    const runsUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`;
+    const runsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs?per_page=1`;
     const runsRes = await fetch(runsUrl, { headers });
 
     if (!runsRes.ok) {
@@ -31,7 +35,7 @@ module.exports = async (req, res) => {
     }
 
     // 2. Get artifacts
-    const artifactsUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${run.id}/artifacts`;
+    const artifactsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`;
     const artifactsRes = await fetch(artifactsUrl, { headers });
 
     if (!artifactsRes.ok) {
