@@ -1,0 +1,11 @@
+{
+  "name": "vercel-minimal-node",
+  "version": "1.0.0",
+  "description": "Minimal Node.js project for Vercel",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
