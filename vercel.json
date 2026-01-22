@@ -1,4 +1,8 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/release", "destination": "/api/download?type=release" },
+    { "source": "/debug", "destination": "/api/download?type=debug" }
+  ]
 }

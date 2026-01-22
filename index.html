@@ -3,10 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vercel Minimal Node</title>
+    <title>ReLSPosed Downloads</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            color: #18181b;
+        }
+        h1 {
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+        .container {
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #000;
+            color: #fff;
+            padding: 12px 24px;
+            margin: 10px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #333;
+        }
+        .btn-secondary {
+            background-color: #fff;
+            color: #000;
+            border: 1px solid #e4e4e7;
+        }
+        .btn-secondary:hover {
+            background-color: #f4f4f5;
+            border-color: #d4d4d8;
+        }
+    </style>
 </head>
 <body>
-    <h1>Vercel Minimal Node Project</h1>
-    <p>Use /api/download to trigger the function.</p>
+    <div class="container">
+        <h1>ReLSPosed Downloads</h1>
+        <a href="/release" class="btn">Download Release</a>
+        <a href="/debug" class="btn btn-secondary">Download Debug</a>
+    </div>
 </body>
 </html>
