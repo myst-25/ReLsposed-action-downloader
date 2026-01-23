@@ -1,0 +1,52 @@
+name: Mirror Release
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Fetch upstream latest release
+        id: upstream
+        run: |
+          API="https://api.github.com/repos/ThePedroo/ReLSPosed/releases/latest"
+
+          curl -s $API > release.json
+
+          TAG=$(jq -r '.tag_name' release.json)
+
+          RELEASE_NAME=$(jq -r '.assets[] | select(.name | contains("zygisk-release")) | .name' release.json)
+          DEBUG_NAME=$(jq -r '.assets[] | select(.name | contains("zygisk-debug")) | .name' release.json)
+
+          RELEASE_URL=$(jq -r '.assets[] | select(.name | contains("zygisk-release")) | .browser_download_url' release.json)
+          DEBUG_URL=$(jq -r '.assets[] | select(.name | contains("zygisk-debug")) | .browser_download_url' release.json)
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "debug_name=$DEBUG_NAME" >> $GITHUB_OUTPUT
+          echo "release_url=$RELEASE_URL" >> $GITHUB_OUTPUT
+          echo "debug_url=$DEBUG_URL" >> $GITHUB_OUTPUT
+
+      - name: Download files
+        run: |
+          curl -L "${{ steps.upstream.outputs.release_url }}" -o "${{ steps.upstream.outputs.release_name }}"
+          curl -L "${{ steps.upstream.outputs.debug_url }}" -o "${{ steps.upstream.outputs.debug_name }}"
+
+      - name: Create new GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.upstream.outputs.tag }}
+          name: ${{ steps.upstream.outputs.tag }}
+          files: "*.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
