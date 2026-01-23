@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ReLSPosed Downloads</title>
 
     <style>
@@ -10,26 +10,20 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f4f5;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            color: #18181b;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        h1 {
-            font-weight: 700;
-            margin-bottom: 2rem;
-            line-height: 1.2;
         }
 
         .container {
             text-align: center;
+            max-width: 420px;
             width: 100%;
-            max-width: 400px;
+        }
+
+        h1 {
+            margin-bottom: 24px;
         }
 
         .buttons {
@@ -39,16 +33,11 @@
         }
 
         .btn {
-            display: block;
-            background-color: #000;
-            color: #fff;
-            padding: 14px 24px;
-            text-decoration: none;
+            background: black;
+            color: white;
+            padding: 14px;
             border-radius: 8px;
-            font-weight: 500;
-            transition: background-color 0.2s, transform 0.1s;
-            text-align: center;
-            font-size: 16px;
+            text-decoration: none;
             opacity: 0.6;
             pointer-events: none;
         }
@@ -58,105 +47,69 @@
             pointer-events: auto;
         }
 
-        .btn:hover {
-            background-color: #333;
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn-secondary {
-            background-color: #fff;
-            color: #000;
-            border: 1px solid #e4e4e7;
-        }
-
-        .btn-secondary:hover {
-            background-color: #f4f4f5;
-            border-color: #d4d4d8;
+        .filename {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+            word-break: break-all;
         }
 
         .status {
+            margin-top: 16px;
             font-size: 14px;
-            margin-top: 12px;
-            color: #71717a;
-        }
-
-        @media (min-width: 480px) {
-            .buttons {
-                flex-direction: row;
-                justify-content: center;
-            }
-            .btn {
-                padding: 12px 24px;
-                min-width: 160px;
-            }
+            color: #666;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>ReLSPosed Downloads</h1>
+<div class="container">
+    <h1>ReLSPosed Downloads</h1>
 
-        <div class="buttons">
+    <div class="buttons">
+        <div>
             <a id="releaseBtn" class="btn">Loading Release…</a>
-            <a id="debugBtn" class="btn btn-secondary">Loading Debug…</a>
+            <div id="releaseName" class="filename"></div>
         </div>
 
-        <div class="status" id="status">Fetching latest build…</div>
+        <div>
+            <a id="debugBtn" class="btn">Loading Debug…</a>
+            <div id="debugName" class="filename"></div>
+        </div>
     </div>
 
-    <script>
-        async function loadLatest() {
-            const status = document.getElementById("status");
-            const releaseBtn = document.getElementById("releaseBtn");
-            const debugBtn = document.getElementById("debugBtn");
+    <div class="status" id="status">Fetching latest build…</div>
+</div>
 
-            try {
-                const res = await fetch(
-                    "https://api.github.com/repos/myst-25/ReLSPosed/releases/latest"
-                );
+<script>
+async function loadLatest() {
+    const repo = "myst-25/ReLsposed-action-downloader";
 
-                const data = await res.json();
+    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+    const data = await res.json();
 
-                const release = data.assets.find(a =>
-                    a.name.includes("zygisk-release")
-                );
+    const release = data.assets.find(a => a.name.includes("zygisk-release"));
+    const debug   = data.assets.find(a => a.name.includes("zygisk-debug"));
 
-                const debug = data.assets.find(a =>
-                    a.name.includes("zygisk-debug")
-                );
+    const releaseBtn = document.getElementById("releaseBtn");
+    const debugBtn   = document.getElementById("debugBtn");
 
-                if (!release || !debug) {
-                    throw new Error("Files not found in release");
-                }
+    document.getElementById("releaseName").textContent = release.name;
+    document.getElementById("debugName").textContent   = debug.name;
 
-                releaseBtn.href = release.browser_download_url;
-                debugBtn.href = debug.browser_download_url;
+    releaseBtn.href = release.browser_download_url;
+    debugBtn.href   = debug.browser_download_url;
 
-                releaseBtn.textContent = "Download Release";
-                debugBtn.textContent = "Download Debug";
+    releaseBtn.textContent = "Download Release";
+    debugBtn.textContent   = "Download Debug";
 
-                releaseBtn.classList.add("ready");
-                debugBtn.classList.add("ready");
+    releaseBtn.classList.add("ready");
+    debugBtn.classList.add("ready");
 
-                status.textContent = `Latest: ${data.tag_name}`;
-            }
-            catch (err) {
-                console.error(err);
-                status.textContent = "Failed to load latest build. Open Releases page.";
-                releaseBtn.href = "https://github.com/myst-25/ReLSPosed/releases/latest";
-                debugBtn.href = "https://github.com/myst-25/ReLSPosed/releases/latest";
-                releaseBtn.classList.add("ready");
-                debugBtn.classList.add("ready");
-                releaseBtn.textContent = "Open Releases";
-                debugBtn.style.display = "none";
-            }
-        }
+    document.getElementById("status").textContent = "Latest: " + data.tag_name;
+}
 
-        loadLatest();
-    </script>
+loadLatest();
+</script>
 </body>
 </html>
