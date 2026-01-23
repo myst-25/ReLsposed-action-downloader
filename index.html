@@ -39,6 +39,8 @@ body{
   transition:.25s;
 }
 
+/* ---------- CARD ---------- */
+
 .card{
   position:relative;
   background:var(--card);
@@ -50,7 +52,8 @@ body{
   box-shadow:0 10px 30px rgba(0,0,0,.08);
 }
 
-/* toggle */
+/* ---------- TOGGLE ---------- */
+
 .toggle{
   position:absolute;
   top:14px;
@@ -61,6 +64,8 @@ body{
   font-size:12px;
   cursor:pointer;
 }
+
+/* ---------- BUTTONS ---------- */
 
 .group{
   display:flex;
@@ -97,8 +102,10 @@ body{
 .status{
   font-size:13px;
   color:var(--muted);
-  margin-top:16px;
+  margin-top:14px;
 }
+
+/* ---------- FOOTER ---------- */
 
 .footer{
   border-top:1px solid var(--border);
@@ -107,8 +114,17 @@ body{
   font-size:13px;
   color:var(--muted);
 }
-.footer a{font-weight:600;text-decoration:none;color:inherit}
-.community{margin-top:8px;font-style:italic}
+
+.footer a{
+  font-weight:600;
+  text-decoration:none;
+  color:inherit;
+}
+
+.community{
+  margin-top:8px;
+  font-style:italic;
+}
 </style>
 </head>
 
@@ -118,10 +134,11 @@ body{
 
 <div id="toggleTheme" class="toggle">🌙 Dark</div>
 
-<h1>ReLSPosed Downloader</h1>
-<div id="version" class="status">Fetching latest build…</div>
+<h2>ReLSPosed Downloader</h2>
+<div id="version" class="status">Loading latest build…</div>
 
 <div class="group">
+
   <div>
     <a id="releaseBtn" class="btn primary">Loading Release…</a>
     <div id="releaseName" class="filename"></div>
@@ -131,6 +148,7 @@ body{
     <a id="debugBtn" class="btn secondary">Loading Debug…</a>
     <div id="debugName" class="filename"></div>
   </div>
+
 </div>
 
 <div id="status" class="status"></div>
@@ -145,7 +163,7 @@ Thanks to <a href="https://github.com/ThePedroo/ReLSPosed">ReLSPosed developers<
 
 <script>
 
-/* ---------- DARK MODE ---------- */
+/* ========= DARK MODE ========= */
 
 const toggle = document.getElementById("toggleTheme");
 
@@ -162,57 +180,46 @@ toggle.onclick = () =>
   setTheme(document.body.classList.contains("dark")?"light":"dark");
 
 
-/* ---------- RELEASE LOADER (FIXED) ---------- */
+/* ========= RELEASE FETCH (simple + reliable) ========= */
 
 async function loadLatest(){
 
   const repo = "myst-25/ReLSPosed-action-downloader";
 
-  const versionEl = document.getElementById("version");
-  const statusEl = document.getElementById("status");
-
   const releaseBtn = document.getElementById("releaseBtn");
   const debugBtn   = document.getElementById("debugBtn");
+  const versionEl  = document.getElementById("version");
 
   try{
     const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
 
-    if(!res.ok){
-      throw new Error("No releases yet");
-    }
+    if(!res.ok) throw new Error();
 
     const data = await res.json();
 
     const release = data.assets.find(a=>a.name.includes("zygisk-release"));
     const debug   = data.assets.find(a=>a.name.includes("zygisk-debug"));
 
-    if(!release || !debug){
-      throw new Error("Files missing");
-    }
-
     releaseBtn.href = release.browser_download_url;
     debugBtn.href   = debug.browser_download_url;
 
-    releaseBtn.textContent = "Download Release";
-    debugBtn.textContent   = "Download Debug";
-
     document.getElementById("releaseName").textContent = release.name;
     document.getElementById("debugName").textContent   = debug.name;
+
+    releaseBtn.textContent = "Download Release";
+    debugBtn.textContent   = "Download Debug";
 
     releaseBtn.classList.add("ready");
     debugBtn.classList.add("ready");
 
     versionEl.textContent = "Latest version: " + data.tag_name;
-    statusEl.textContent = "Auto updates every 30 minutes";
 
-  }catch(err){
-
-    versionEl.textContent = "No releases available yet";
-    statusEl.textContent = "Open Releases page manually";
-
+  }catch{
+    /* fallback */
     releaseBtn.href = `https://github.com/${repo}/releases`;
     releaseBtn.textContent = "Open Releases";
     releaseBtn.classList.add("ready");
+    versionEl.textContent = "No releases yet";
   }
 }
 
