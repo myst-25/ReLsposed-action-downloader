@@ -8,7 +8,7 @@
 <style>
 :root{
   --bg:#f6f6f7;
-  --card:#ffffff;
+  --card:#fff;
   --text:#18181b;
   --muted:#71717a;
   --border:#e4e4e7;
@@ -35,84 +35,61 @@ body{
   align-items:center;
   justify-content:center;
   min-height:100vh;
-  padding:20px;
-  transition:.25s;
 }
-
-/* ---------- CARD ---------- */
 
 .card{
   position:relative;
   background:var(--card);
-  max-width:480px;
-  width:100%;
   padding:40px;
+  width:100%;
+  max-width:420px;
   border-radius:18px;
   text-align:center;
   box-shadow:0 10px 30px rgba(0,0,0,.08);
 }
 
-/* ---------- TOGGLE ---------- */
-
 .toggle{
   position:absolute;
-  top:14px;
-  right:14px;
+  top:12px;
+  right:12px;
   background:var(--border);
   padding:6px 10px;
   border-radius:20px;
-  font-size:12px;
   cursor:pointer;
+  font-size:12px;
 }
-
-/* ---------- BUTTONS ---------- */
 
 .group{
   display:flex;
   flex-direction:column;
-  gap:18px;
-  margin:24px 0;
+  gap:16px;
+  margin:28px 0;
 }
 
 .btn{
   display:block;
   padding:14px;
   border-radius:10px;
-  font-weight:600;
   text-decoration:none;
-  opacity:.5;
-  pointer-events:none;
+  font-weight:600;
 }
 
-.btn.ready{
-  opacity:1;
-  pointer-events:auto;
+.primary{
+  background:var(--primary);
+  color:var(--card);
 }
 
-.primary{background:var(--primary);color:var(--card)}
-.secondary{border:1px solid var(--border);color:var(--text)}
-
-.filename{
-  font-size:12px;
-  color:var(--muted);
-  margin-top:6px;
-  word-break:break-all;
+.secondary{
+  border:1px solid var(--border);
+  color:var(--text);
 }
-
-.status{
-  font-size:13px;
-  color:var(--muted);
-  margin-top:14px;
-}
-
-/* ---------- FOOTER ---------- */
 
 .footer{
-  border-top:1px solid var(--border);
-  margin-top:28px;
-  padding-top:18px;
   font-size:13px;
   color:var(--muted);
+  border-top:1px solid var(--border);
+  margin-top:24px;
+  padding-top:16px;
 }
 
 .footer a{
@@ -135,23 +112,20 @@ body{
 <div id="toggleTheme" class="toggle">🌙 Dark</div>
 
 <h2>ReLSPosed Downloader</h2>
-<div id="version" class="status">Loading latest build…</div>
 
 <div class="group">
 
-  <div>
-    <a id="releaseBtn" class="btn primary">Loading Release…</a>
-    <div id="releaseName" class="filename"></div>
-  </div>
+<a class="btn primary"
+   href="https://github.com/myst-25/ReLSPosed-action-downloader/releases/latest/download/ReLSPosed-zygisk-release.zip">
+   Download Release
+</a>
 
-  <div>
-    <a id="debugBtn" class="btn secondary">Loading Debug…</a>
-    <div id="debugName" class="filename"></div>
-  </div>
+<a class="btn secondary"
+   href="https://github.com/myst-25/ReLSPosed-action-downloader/releases/latest/download/ReLSPosed-zygisk-debug.zip">
+   Download Debug
+</a>
 
 </div>
-
-<div id="status" class="status"></div>
 
 <div class="footer">
 Maintained by <a href="https://github.com/myst-25">myst-25</a><br>
@@ -162,10 +136,8 @@ Thanks to <a href="https://github.com/ThePedroo/ReLSPosed">ReLSPosed developers<
 </div>
 
 <script>
-
-/* ========= DARK MODE ========= */
-
 const toggle = document.getElementById("toggleTheme");
+const saved = localStorage.getItem("theme");
 
 function setTheme(t){
   document.body.classList.toggle("dark", t==="dark");
@@ -173,58 +145,10 @@ function setTheme(t){
   localStorage.setItem("theme", t);
 }
 
-setTheme(localStorage.getItem("theme") ||
- (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light"));
+setTheme(saved || (window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));
 
 toggle.onclick = () =>
   setTheme(document.body.classList.contains("dark")?"light":"dark");
-
-
-/* ========= RELEASE FETCH (simple + reliable) ========= */
-
-async function loadLatest(){
-
-  const repo = "myst-25/ReLSPosed-action-downloader";
-
-  const releaseBtn = document.getElementById("releaseBtn");
-  const debugBtn   = document.getElementById("debugBtn");
-  const versionEl  = document.getElementById("version");
-
-  try{
-    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
-
-    if(!res.ok) throw new Error();
-
-    const data = await res.json();
-
-    const release = data.assets.find(a=>a.name.includes("zygisk-release"));
-    const debug   = data.assets.find(a=>a.name.includes("zygisk-debug"));
-
-    releaseBtn.href = release.browser_download_url;
-    debugBtn.href   = debug.browser_download_url;
-
-    document.getElementById("releaseName").textContent = release.name;
-    document.getElementById("debugName").textContent   = debug.name;
-
-    releaseBtn.textContent = "Download Release";
-    debugBtn.textContent   = "Download Debug";
-
-    releaseBtn.classList.add("ready");
-    debugBtn.classList.add("ready");
-
-    versionEl.textContent = "Latest version: " + data.tag_name;
-
-  }catch{
-    /* fallback */
-    releaseBtn.href = `https://github.com/${repo}/releases`;
-    releaseBtn.textContent = "Open Releases";
-    releaseBtn.classList.add("ready");
-    versionEl.textContent = "No releases yet";
-  }
-}
-
-loadLatest();
-
 </script>
 
 </body>
