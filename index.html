@@ -3,19 +3,36 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
 <title>ReLSPosed Downloader</title>
 
 <style>
+
+/* ======================================================
+   THEME VARIABLES
+====================================================== */
+
 :root{
   --bg:#f6f6f7;
   --card:#ffffff;
   --text:#18181b;
   --muted:#71717a;
   --border:#e4e4e7;
+  --primary:#000000;
 }
 
-/* ---------- BASE ---------- */
+body.dark{
+  --bg:#0f0f10;
+  --card:#18181b;
+  --text:#f4f4f5;
+  --muted:#a1a1aa;
+  --border:#2a2a2e;
+  --primary:#ffffff;
+}
+
+
+/* ======================================================
+   BASE
+====================================================== */
 
 *{box-sizing:border-box}
 
@@ -23,29 +40,60 @@ body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--bg);
+  color:var(--text);
   display:flex;
   align-items:center;
   justify-content:center;
   min-height:100vh;
   padding:20px;
-  color:var(--text);
+  transition:.25s ease;
 }
 
-/* ---------- CARD ---------- */
+
+/* ======================================================
+   CARD
+====================================================== */
 
 .card{
+  position:relative;
   background:var(--card);
   width:100%;
   max-width:480px;
-  padding:40px 32px;
+  padding:42px 32px;
   border-radius:20px;
   box-shadow:
     0 12px 32px rgba(0,0,0,.06),
     0 3px 10px rgba(0,0,0,.04);
   text-align:center;
+  transition:.25s ease;
 }
 
-/* ---------- TITLE ---------- */
+
+/* ======================================================
+   DARK MODE TOGGLE
+====================================================== */
+
+.toggle{
+  position:absolute;
+  top:14px;
+  right:14px;
+  background:var(--border);
+  border-radius:20px;
+  padding:6px 10px;
+  font-size:12px;
+  cursor:pointer;
+  user-select:none;
+  transition:.2s;
+}
+
+.toggle:hover{
+  opacity:.8;
+}
+
+
+/* ======================================================
+   TEXT
+====================================================== */
 
 h1{
   margin:0 0 8px;
@@ -58,7 +106,10 @@ h1{
   margin-bottom:28px;
 }
 
-/* ---------- BUTTONS ---------- */
+
+/* ======================================================
+   BUTTONS
+====================================================== */
 
 .group{
   display:flex;
@@ -84,21 +135,23 @@ h1{
 }
 
 .primary{
-  background:#000;
-  color:#fff;
+  background:var(--primary);
+  color:var(--card);
 }
 
 .secondary{
-  background:#fff;
   border:1px solid var(--border);
-  color:#000;
+  color:var(--text);
 }
 
 .btn:hover{
   transform:translateY(-1px);
 }
 
-/* ---------- FILENAME ---------- */
+
+/* ======================================================
+   FILENAME
+====================================================== */
 
 .filename{
   font-size:12px;
@@ -107,7 +160,10 @@ h1{
   word-break:break-all;
 }
 
-/* ---------- STATUS ---------- */
+
+/* ======================================================
+   STATUS
+====================================================== */
 
 .status{
   font-size:13px;
@@ -115,7 +171,10 @@ h1{
   margin-bottom:28px;
 }
 
-/* ---------- FOOTER ---------- */
+
+/* ======================================================
+   FOOTER
+====================================================== */
 
 .footer{
   font-size:13px;
@@ -127,8 +186,8 @@ h1{
 
 .footer a{
   color:inherit;
-  text-decoration:none;
   font-weight:600;
+  text-decoration:none;
 }
 
 .footer a:hover{
@@ -139,12 +198,16 @@ h1{
   margin-top:10px;
   font-style:italic;
 }
+
 </style>
 </head>
 
 <body>
 
 <div class="card">
+
+  <!-- DARK MODE BUTTON -->
+  <div id="toggleTheme" class="toggle">🌙 Dark</div>
 
   <h1>ReLSPosed Downloader</h1>
   <div id="version" class="subtitle">Fetching latest build…</div>
@@ -165,31 +228,58 @@ h1{
 
   <div id="status" class="status"></div>
 
-  <!-- ---------- FOOTER ---------- -->
-
   <div class="footer">
-
-    Maintained by  
+    Maintained by
     <a href="https://github.com/myst-25" target="_blank">myst-25</a>
 
     <br><br>
 
-    Thanks to the amazing  
+    Thanks to the
     <a href="https://github.com/ThePedroo/ReLSPosed" target="_blank">
       ReLSPosed developers
     </a>
-    for the original project ❤️
 
     <div class="community">
       by the community • for the community
     </div>
-
   </div>
 
 </div>
 
 
 <script>
+
+/* ======================================================
+   DARK MODE LOGIC
+====================================================== */
+
+const toggle = document.getElementById("toggleTheme");
+
+function setTheme(mode){
+  document.body.classList.toggle("dark", mode === "dark");
+  toggle.textContent = mode === "dark" ? "☀️ Light" : "🌙 Dark";
+  localStorage.setItem("theme", mode);
+}
+
+const saved = localStorage.getItem("theme");
+
+if(saved){
+  setTheme(saved);
+}else{
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  setTheme(prefersDark ? "dark" : "light");
+}
+
+toggle.onclick = () => {
+  const current = document.body.classList.contains("dark") ? "dark" : "light";
+  setTheme(current === "dark" ? "light" : "dark");
+};
+
+
+/* ======================================================
+   LOAD LATEST RELEASE
+====================================================== */
+
 async function loadLatest() {
 
   const repo = "myst-25/ReLsposed-action-downloader";
@@ -204,36 +294,28 @@ async function loadLatest() {
     const release = data.assets.find(a => a.name.includes("zygisk-release"));
     const debug   = data.assets.find(a => a.name.includes("zygisk-debug"));
 
-    const releaseBtn = document.getElementById("releaseBtn");
-    const debugBtn   = document.getElementById("debugBtn");
+    document.getElementById("releaseBtn").href = release.browser_download_url;
+    document.getElementById("debugBtn").href   = debug.browser_download_url;
 
     document.getElementById("releaseName").textContent = release.name;
     document.getElementById("debugName").textContent   = debug.name;
 
-    releaseBtn.href = release.browser_download_url;
-    debugBtn.href   = debug.browser_download_url;
+    document.getElementById("releaseBtn").textContent = "Download Release";
+    document.getElementById("debugBtn").textContent   = "Download Debug";
 
-    releaseBtn.textContent = "Download Release";
-    debugBtn.textContent   = "Download Debug";
-
-    releaseBtn.classList.add("ready");
-    debugBtn.classList.add("ready");
+    document.getElementById("releaseBtn").classList.add("ready");
+    document.getElementById("debugBtn").classList.add("ready");
 
     versionEl.textContent = `Latest version: ${data.tag_name}`;
     statusEl.textContent = "Updates automatically every 30 minutes";
   }
-  catch (e) {
-    versionEl.textContent = "Unable to load latest build";
-    statusEl.textContent = "Open Releases manually";
-
-    document.getElementById("releaseBtn").href =
-      `https://github.com/${repo}/releases`;
-
-    document.getElementById("releaseBtn").classList.add("ready");
+  catch(e){
+    versionEl.textContent = "Failed to load release";
   }
 }
 
 loadLatest();
+
 </script>
 
 </body>
