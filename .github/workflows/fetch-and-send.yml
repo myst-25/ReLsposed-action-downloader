@@ -13,9 +13,9 @@ jobs:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # -----------------------------
-      # Get latest run info
-      # -----------------------------
+      # ---------------------------------------
+      # Get latest successful run info
+      # ---------------------------------------
       - name: Get run info
         run: |
           DATA=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/workflows/core.yml/runs)
@@ -24,25 +24,25 @@ jobs:
           echo "RUN_DATE=$(echo "$DATA" | jq -r '.workflow_runs[0].created_at')" >> $GITHUB_ENV
           echo "BOT_DATE=$(date '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_ENV
 
-      # -----------------------------
-      # Download debug
-      # -----------------------------
+      # ---------------------------------------
+      # Download debug artifact
+      # ---------------------------------------
       - name: Download debug
         run: |
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .archive_download_url')
           curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o debug.zip
 
-      # -----------------------------
-      # Download release
-      # -----------------------------
+      # ---------------------------------------
+      # Download release artifact
+      # ---------------------------------------
       - name: Download release
         run: |
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .archive_download_url')
           curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o release.zip
 
-      # -----------------------------
+      # ---------------------------------------
       # Send debug (separate message)
-      # -----------------------------
+      # ---------------------------------------
       - name: Send debug
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -51,16 +51,11 @@ jobs:
             -F chat_id=-1002868007272 \
             -F message_thread_id=384 \
             -F document=@debug.zip \
-            -F caption="debug.zip
+            -F caption=$'debug.zip\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
 
-release date: $RUN_DATE
-bot release date: $BOT_DATE
-
-by @Myst_25"
-
-      # -----------------------------
+      # ---------------------------------------
       # Send release (separate message)
-      # -----------------------------
+      # ---------------------------------------
       - name: Send release
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -69,9 +64,4 @@ by @Myst_25"
             -F chat_id=-1002868007272 \
             -F message_thread_id=384 \
             -F document=@release.zip \
-            -F caption="release.zip
-
-release date: $RUN_DATE
-bot release date: $BOT_DATE
-
-by @Myst_25"
+            -F caption=$'release.zip\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
