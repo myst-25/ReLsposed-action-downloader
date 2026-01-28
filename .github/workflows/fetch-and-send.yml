@@ -3,38 +3,34 @@ name: Daily ReLSPosed → Telegram
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"   # 12:00 AM UTC daily
+    - cron: "0 0 * * *"
 
 jobs:
   send-builds:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------------
-      # Install tools
-      # ----------------------------
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # ----------------------------
-      # Get latest run id + date
-      # ----------------------------
+      # ---------------------------------------
+      # Get latest run id + dates
+      # ---------------------------------------
       - name: Get run info
         run: |
           DATA=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/workflows/core.yml/runs)
 
           RUN_ID=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .id' | head -n1)
           RUN_DATE=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .created_at' | head -n1)
-
           BOT_DATE=$(date "+%Y-%m-%d %H:%M UTC")
 
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "RUN_DATE=$RUN_DATE" >> $GITHUB_ENV
           echo "BOT_DATE=$BOT_DATE" >> $GITHUB_ENV
 
-      # ----------------------------
+      # ---------------------------------------
       # Download debug + release only
-      # ----------------------------
+      # ---------------------------------------
       - name: Download artifacts
         run: |
           mkdir downloads
@@ -51,9 +47,9 @@ jobs:
             fi
           done < list.txt
 
-      # ----------------------------
-      # Send BOTH in one Telegram message
-      # ----------------------------
+      # ---------------------------------------
+      # Send both files in one Telegram message
+      # ---------------------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -64,18 +60,11 @@ jobs:
           DEBUG_NAME=$(basename "$DEBUG")
           RELEASE_NAME=$(basename "$RELEASE")
 
-          CAPTION="\
-\`$DEBUG_NAME\`
-\`$RELEASE_NAME\`
-
-release date: $RUN_DATE
-bot release date: $BOT_DATE
-
-by Myst-25: https://github.com/myst-25"
+          TEXT="$DEBUG_NAME | $RELEASE_NAME | release: $RUN_DATE | bot: $BOT_DATE | by Myst-25 https://github.com/myst-25"
 
           MEDIA=$(jq -n \
-            --arg cap "$CAPTION" \
-            '[{"type":"document","media":"attach://file1","caption":$cap,"parse_mode":"Markdown"},
+            --arg t "$TEXT" \
+            '[{"type":"document","media":"attach://file1","caption":$t},
               {"type":"document","media":"attach://file2"}]')
 
           curl -sS -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMediaGroup" \
