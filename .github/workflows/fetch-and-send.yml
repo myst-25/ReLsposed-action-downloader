@@ -1,15 +1,21 @@
-name: ReLSPosed → Telegram
+name: ReLSPosed → Telegram + Release
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
 
+permissions:
+  contents: write   # REQUIRED for releases
+
 jobs:
   send:
     runs-on: ubuntu-latest
 
     steps:
+      # ---------------------------------------
+      # Install tools
+      # ---------------------------------------
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
@@ -25,24 +31,29 @@ jobs:
           echo "BOT_DATE=$(date '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_ENV
 
       # ---------------------------------------
-      # Download artifacts with ORIGINAL names
+      # Download debug artifact
       # ---------------------------------------
       - name: Download debug
         run: |
           NAME=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .name')
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .archive_download_url')
+
           curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o "$NAME.zip"
           echo "DEBUG_FILE=$NAME.zip" >> $GITHUB_ENV
 
+      # ---------------------------------------
+      # Download release artifact
+      # ---------------------------------------
       - name: Download release
         run: |
           NAME=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .name')
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .archive_download_url')
+
           curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o "$NAME.zip"
           echo "RELEASE_FILE=$NAME.zip" >> $GITHUB_ENV
 
       # ---------------------------------------
-      # Send debug (separate message)
+      # Send debug to Telegram
       # ---------------------------------------
       - name: Send debug
         env:
@@ -55,7 +66,7 @@ jobs:
             -F caption=$"$DEBUG_FILE"$'\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
 
       # ---------------------------------------
-      # Send release (separate message)
+      # Send release to Telegram
       # ---------------------------------------
       - name: Send release
         env:
@@ -66,3 +77,25 @@ jobs:
             -F message_thread_id=384 \
             -F document=@"$RELEASE_FILE" \
             -F caption=$"$RELEASE_FILE"$'\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
+
+      # ---------------------------------------
+      # Upload SAME files to GitHub Release
+      # ---------------------------------------
+      - name: Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: Latest ReLSPosed Build
+          body: |
+            Debug: ${{ env.DEBUG_FILE }}
+            Release: ${{ env.RELEASE_FILE }}
+
+            release date: ${{ env.RUN_DATE }}
+            bot release date: ${{ env.BOT_DATE }}
+
+            by @Myst_25
+          files: |
+            ${{ env.DEBUG_FILE }}
+            ${{ env.RELEASE_FILE }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
