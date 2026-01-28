@@ -4,27 +4,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  send-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y curl jq
+      - name: Install curl
+        run: sudo apt-get update && sudo apt-get install -y curl
 
-      - name: Fetch quote
+      - name: Get random quote
         run: |
-          RESPONSE=$(curl -s https://api.quotable.io/random)
-          QUOTE=$(echo "$RESPONSE" | jq -r '.content')
-          AUTHOR=$(echo "$RESPONSE" | jq -r '.author')
-
+          QUOTE=$(curl -s https://api.github.com/zen)
           echo "QUOTE=$QUOTE" >> $GITHUB_ENV
-          echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
 
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          TEXT="Random Quote: \"$QUOTE\" — $AUTHOR"
+          TEXT="🤖 Bot test successful!\n\n$QUOTE"
 
           curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
             --data-urlencode "chat_id=-1002868007272" \
