@@ -8,11 +8,16 @@
     DEBUG_NAME=$(basename "$DEBUG")
     RELEASE_NAME=$(basename "$RELEASE")
 
-    TEXT=$(printf "%s\n%s\n\nrelease date: %s\nbot release date: %s\n\nby @Myst_25" \
-      "$DEBUG_NAME" \
-      "$RELEASE_NAME" \
-      "$RUN_DATE" \
-      "$BOT_DATE")
+    # Build caption safely (no multiline strings)
+    echo "$DEBUG_NAME" > caption.txt
+    echo "$RELEASE_NAME" >> caption.txt
+    echo "" >> caption.txt
+    echo "release date: $RUN_DATE" >> caption.txt
+    echo "bot release date: $BOT_DATE" >> caption.txt
+    echo "" >> caption.txt
+    echo "by @Myst_25" >> caption.txt
+
+    TEXT=$(cat caption.txt)
 
     MEDIA=$(jq -n \
       --arg t "$TEXT" \
