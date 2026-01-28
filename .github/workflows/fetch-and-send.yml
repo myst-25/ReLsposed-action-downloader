@@ -1,4 +1,4 @@
-name: Daily ReLSPosed → Telegram (Debug + Release)
+name: Daily ReLSPosed → Telegram
 
 on:
   workflow_dispatch:
@@ -10,29 +10,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------------------------
+      # ------------------------------------------------
       # Install tools
-      # ----------------------------------------
+      # ------------------------------------------------
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # ----------------------------------------
-      # Get latest successful core.yml run
-      # ----------------------------------------
-      - name: Get latest run id
+      # ------------------------------------------------
+      # Get latest run info (id + date)
+      # ------------------------------------------------
+      - name: Get run info
         run: |
-          RUN_ID=$(curl -s \
-            https://api.github.com/repos/ThePedroo/ReLSPosed/actions/workflows/core.yml/runs \
-            | jq -r '.workflow_runs[] | select(.conclusion=="success") | .id' \
-            | head -n1)
+          DATA=$(curl -s \
+            https://api.github.com/repos/ThePedroo/ReLSPosed/actions/workflows/core.yml/runs)
+
+          RUN_ID=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .id' | head -n1)
+          RUN_DATE=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .created_at' | head -n1)
+
+          BOT_DATE=$(date "+%Y-%m-%d %H:%M UTC")
 
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run: $RUN_ID"
+          echo "RUN_DATE=$RUN_DATE" >> $GITHUB_ENV
+          echo "BOT_DATE=$BOT_DATE" >> $GITHUB_ENV
 
-      # ----------------------------------------
+      # ------------------------------------------------
       # Download ONLY debug + release artifacts
-      # ----------------------------------------
-      - name: Download debug & release artifacts
+      # ------------------------------------------------
+      - name: Download artifacts
         run: |
           mkdir downloads
 
@@ -42,8 +46,6 @@ jobs:
 
           while IFS="|" read NAME URL; do
             if [[ "$NAME" == *debug* || "$NAME" == *release* ]]; then
-              echo "Downloading $NAME"
-
               curl -L \
                 -H "Authorization: Bearer ${{ github.token }}" \
                 -H "Accept: application/vnd.github+json" \
@@ -52,24 +54,41 @@ jobs:
             fi
           done < list.txt
 
-          echo "Downloaded files:"
-          ls -lh downloads
+          ls downloads > names.txt
 
-      # ----------------------------------------
-      # Send both zips to Telegram topic
-      # ----------------------------------------
+      # ------------------------------------------------
+      # Send BOTH files in ONE message (media group)
+      # ------------------------------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          for file in downloads/*.zip; do
-            NAME=$(basename "$file")
+          DEBUG=$(ls downloads/*debug*.zip)
+          RELEASE=$(ls downloads/*release*.zip)
 
-            echo "Sending $NAME"
+          DEBUG_NAME=$(basename "$DEBUG")
+          RELEASE_NAME=$(basename "$RELEASE")
 
-            curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-              -F chat_id="-1002868007272" \
-              -F message_thread_id="384" \
-              -F document=@"$file" \
-              -F caption="🚀 ReLSPosed Build\n📦 $NAME\n🕛 Daily auto-post"
-          done
+          CAPTION="\
+\`$DEBUG_NAME\`
+\`$RELEASE_NAME\`
+
+release date: $RUN_DATE
+bot release date: $BOT_DATE
+
+> **by [Myst-25](https://github.com/myst-25)**"
+
+          curl -sS -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMediaGroup" \
+            -F chat_id="-1002868007272" \
+            -F message_thread_id="384" \
+            -F "media=[{
+              \"type\":\"document\",
+              \"media\":\"attach://file1\",
+              \"caption\":\"$CAPTION\",
+              \"parse_mode\":\"MarkdownV2\"
+            },{
+              \"type\":\"document\",
+              \"media\":\"attach://file2\"
+            }]" \
+            -F file1=@"$DEBUG" \
+            -F file2=@"$RELEASE"
