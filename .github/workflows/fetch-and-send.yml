@@ -1,80 +1,50 @@
-name: Daily ReLSPosed → Telegram
+name: ReLSPosed → Telegram
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"   # 12:00 AM UTC daily
+    - cron: "0 0 * * *"
 
 jobs:
-  send-builds:
+  send:
     runs-on: ubuntu-latest
 
     steps:
-      # ---------------------------------------
-      # Install tools
-      # ---------------------------------------
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # ---------------------------------------
-      # Get latest successful run info
-      # ---------------------------------------
-      - name: Get run info
+      - name: Get latest run id
         run: |
           DATA=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/workflows/core.yml/runs)
-
-          echo "RUN_ID=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .id' | head -n1)" >> $GITHUB_ENV
-          echo "RUN_DATE=$(echo "$DATA" | jq -r '.workflow_runs[] | select(.conclusion=="success") | .created_at' | head -n1)" >> $GITHUB_ENV
+          echo "RUN_ID=$(echo "$DATA" | jq -r '.workflow_runs[0].id')" >> $GITHUB_ENV
+          echo "RUN_DATE=$(echo "$DATA" | jq -r '.workflow_runs[0].created_at')" >> $GITHUB_ENV
           echo "BOT_DATE=$(date '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_ENV
 
-      # ---------------------------------------
-      # Download debug + release artifacts only
-      # ---------------------------------------
-      - name: Download artifacts
+      - name: Download debug
         run: |
-          mkdir downloads
+          URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .archive_download_url')
+          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o debug.zip
 
-          curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
-            | jq -r '.artifacts[] | "\(.name) \(.archive_download_url)"' \
-            | while read NAME URL; do
-                if [[ "$NAME" == *debug* || "$NAME" == *release* ]]; then
-                  echo "Downloading $NAME"
-                  curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o "downloads/$NAME.zip"
-                fi
-              done
+      - name: Download release
+        run: |
+          URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .archive_download_url')
+          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o release.zip
 
-          ls -lh downloads
-
-      # ---------------------------------------
-      # Send to Telegram (simple & stable)
-      # ---------------------------------------
-      - name: Send to Telegram
+      - name: Send debug with caption
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          DEBUG=$(ls downloads/*debug*.zip)
-          RELEASE=$(ls downloads/*release*.zip)
+          curl -sS https://api.telegram.org/bot$BOT_TOKEN/sendDocument \
+            -F chat_id=-1002868007272 \
+            -F message_thread_id=384 \
+            -F document=@debug.zip \
+            -F caption="debug.zip release.zip release: $RUN_DATE bot: $BOT_DATE by @Myst_25"
 
-          DEBUG_NAME=$(basename "$DEBUG")
-          RELEASE_NAME=$(basename "$RELEASE")
-
-          CAPTION="$DEBUG_NAME
-$RELEASE_NAME
-
-release date: $RUN_DATE
-bot release date: $BOT_DATE
-
-by @Myst_25"
-
-          # Send debug with caption
-          curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-            -F chat_id="-1002868007272" \
-            -F message_thread_id="384" \
-            -F document=@"$DEBUG" \
-            -F caption="$CAPTION"
-
-          # Send release without caption
-          curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-            -F chat_id="-1002868007272" \
-            -F message_thread_id="384" \
-            -F document=@"$RELEASE"
+      - name: Send release
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          curl -sS https://api.telegram.org/bot$BOT_TOKEN/sendDocument \
+            -F chat_id=-1002868007272 \
+            -F message_thread_id=384 \
+            -F document=@release.zip
