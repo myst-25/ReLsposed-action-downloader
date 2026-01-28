@@ -1,1 +1,58 @@
-#
+name: Fetch ReLSPosed artifact → Telegram
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y jq curl unzip
+
+      # 🔹 Get latest successful run
+      - name: Get latest successful run id
+        id: run
+        run: |
+          RUN_ID=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs \
+            | jq '.workflow_runs[] | select(.conclusion=="success") | .id' \
+            | head -n1)
+
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Found run id: $RUN_ID"
+
+      # 🔹 Get artifact download URL
+      - name: Get artifact URL
+        run: |
+          ART_URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
+            | jq -r '.artifacts[0].archive_download_url')
+
+          echo "ART_URL=$ART_URL" >> $GITHUB_ENV
+          echo "Artifact URL: $ART_URL"
+
+      # 🔹 Download artifact
+      - name: Download artifact
+        run: |
+          curl -L "$ART_URL" -o artifact.zip
+
+      # 🔹 Extract artifact
+      - name: Extract
+        run: |
+          unzip artifact.zip -d out
+
+      # 🔹 Send to Telegram
+      - name: Send to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          FILE=$(find out -name "*.zip" | head -n1)
+
+          echo "Sending $FILE to Telegram..."
+
+          curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+            -F chat_id="-1002868007272" \
+            -F document=@"$FILE" \
+            -F caption="🚀 New ReLSPosed test build available!"
