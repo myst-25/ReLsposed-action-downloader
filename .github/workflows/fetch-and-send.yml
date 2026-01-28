@@ -1,4 +1,4 @@
-name: Daily ReLSPosed → Telegram
+name: Daily ReLSPosed → Telegram (Debug + Release)
 
 on:
   workflow_dispatch:
@@ -6,19 +6,19 @@ on:
     - cron: "0 0 * * *"   # 12:00 AM UTC daily
 
 jobs:
-  send-build:
+  send-builds:
     runs-on: ubuntu-latest
 
     steps:
-      # ------------------------------------------------
+      # ----------------------------------------
       # Install tools
-      # ------------------------------------------------
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y jq curl unzip zip
+      # ----------------------------------------
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # ------------------------------------------------
-      # Get latest successful run from core.yml only
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Get latest successful core.yml run
+      # ----------------------------------------
       - name: Get latest run id
         run: |
           RUN_ID=$(curl -s \
@@ -29,63 +29,47 @@ jobs:
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "Latest run: $RUN_ID"
 
-      # ------------------------------------------------
-      # Get artifact URLs
-      # ------------------------------------------------
-      - name: Get artifact URLs
+      # ----------------------------------------
+      # Download ONLY debug + release artifacts
+      # ----------------------------------------
+      - name: Download debug & release artifacts
         run: |
+          mkdir downloads
+
           curl -s \
             https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
-            | jq -r '.artifacts[].archive_download_url' > urls.txt
+            | jq -r '.artifacts[] | "\(.name)|\(.archive_download_url)"' > list.txt
 
-          echo "Artifacts:"
-          cat urls.txt
+          while IFS="|" read NAME URL; do
+            if [[ "$NAME" == *debug* || "$NAME" == *release* ]]; then
+              echo "Downloading $NAME"
 
-      # ------------------------------------------------
-      # Download + extract artifacts
-      # ------------------------------------------------
-      - name: Download and extract
-        run: |
-          mkdir extracted
+              curl -L \
+                -H "Authorization: Bearer ${{ github.token }}" \
+                -H "Accept: application/vnd.github+json" \
+                "$URL" \
+                -o "downloads/$NAME.zip"
+            fi
+          done < list.txt
 
-          i=1
-          while read url; do
-            echo "Downloading artifact $i"
+          echo "Downloaded files:"
+          ls -lh downloads
 
-            curl -L \
-              -H "Authorization: Bearer ${{ github.token }}" \
-              -H "Accept: application/vnd.github+json" \
-              "$url" \
-              -o artifact_$i.zip
-
-            unzip -o artifact_$i.zip -d extracted
-            i=$((i+1))
-          done < urls.txt
-
-          echo "Extracted files:"
-          ls -lh extracted
-
-      # ------------------------------------------------
-      # Repack into flashable module zip
-      # ------------------------------------------------
-      - name: Create flashable zip
-        run: |
-          cd extracted
-          zip -r ../ReLSPosed-latest-build.zip ./*
-          cd ..
-
-          echo "Created zip:"
-          ls -lh ReLSPosed-latest-build.zip
-
-      # ------------------------------------------------
-      # Send to Telegram topic
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Send both zips to Telegram topic
+      # ----------------------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          curl -v "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-            -F chat_id="-1002868007272" \
-            -F message_thread_id="384" \
-            -F document=@ReLSPosed-latest-build.zip \
-            -F caption="🚀 ReLSPosed Daily Build\n📦 Flashable module\n🕛 Auto-posted"
+          for file in downloads/*.zip; do
+            NAME=$(basename "$file")
+
+            echo "Sending $NAME"
+
+            curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+              -F chat_id="-1002868007272" \
+              -F message_thread_id="384" \
+              -F document=@"$file" \
+              -F caption="🚀 ReLSPosed Build\n📦 $NAME\n🕛 Daily auto-post"
+          done
