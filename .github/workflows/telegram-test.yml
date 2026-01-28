@@ -1,4 +1,4 @@
-name: Telegram Bot Test (Random Quote)
+name: Telegram Bot Test
 
 on:
   workflow_dispatch:
@@ -8,40 +8,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------------------
-      # Install tools
-      # -----------------------------
-      - name: Install curl + jq
+      - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y curl jq
 
-      # -----------------------------
-      # Get random quote
-      # -----------------------------
       - name: Fetch quote
         run: |
           RESPONSE=$(curl -s https://api.quotable.io/random)
-
           QUOTE=$(echo "$RESPONSE" | jq -r '.content')
           AUTHOR=$(echo "$RESPONSE" | jq -r '.author')
 
           echo "QUOTE=$QUOTE" >> $GITHUB_ENV
           echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
 
-      # -----------------------------
-      # Send to Telegram topic
-      # -----------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          MESSAGE="💬 Random Quote Test
-
-\"$QUOTE\"
-— $AUTHOR
-
-✅ Bot is working!"
+          TEXT="Random Quote: \"$QUOTE\" — $AUTHOR"
 
           curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-            -d chat_id="-1002868007272" \
-            -d message_thread_id="384" \
-            -d text="$MESSAGE"
+            --data-urlencode "chat_id=-1002868007272" \
+            --data-urlencode "message_thread_id=384" \
+            --data-urlencode "text=$TEXT"
