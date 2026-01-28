@@ -1,4 +1,4 @@
-name: Update index.html download links
+name: Update index.html links + version
 
 on:
   release:
@@ -9,46 +9,59 @@ permissions:
   contents: write
 
 jobs:
-  update-index:
+  update:
     runs-on: ubuntu-latest
 
     steps:
+      # ---------------------------------------
+      # Checkout repo
+      # ---------------------------------------
       - uses: actions/checkout@v4
 
-      - name: Install tools
+      # ---------------------------------------
+      # Install tools
+      # ---------------------------------------
+      - name: Install jq + curl
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
       # ---------------------------------------
-      # Fetch release assets
+      # Fetch latest release assets
       # ---------------------------------------
-      - name: Get latest asset links
+      - name: Get latest asset URLs
         run: |
-          DATA=$(curl -s \
-            https://api.github.com/repos/${{ github.repository }}/releases/tags/latest-build)
+          DATA=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/latest-build)
 
           DEBUG_URL=$(echo "$DATA" | jq -r '.assets[] | select(.name|contains("debug")) | .browser_download_url')
           RELEASE_URL=$(echo "$DATA" | jq -r '.assets[] | select(.name|contains("release")) | .browser_download_url')
 
           RELEASE_NAME=$(basename "$RELEASE_URL")
 
-          # extract version (between ReLSPosed- and -zygisk)
+          # extract version safely
           VERSION=$(echo "$RELEASE_NAME" | sed -E 's/ReLSPosed-(.*)-zygisk.*/\1/')
 
           echo "DEBUG_URL=$DEBUG_URL" >> $GITHUB_ENV
           echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
+          echo "Debug: $DEBUG_URL"
+          echo "Release: $RELEASE_URL"
+          echo "Version: $VERSION"
+
       # ---------------------------------------
       # Update index.html
       # ---------------------------------------
-      - name: Update links + version text
+      - name: Update HTML
         run: |
           # update download links
           sed -i "s|href=\".*release.*zip\"|href=\"$RELEASE_URL\"|" index.html
           sed -i "s|href=\".*debug.*zip\"|href=\"$DEBUG_URL\"|" index.html
 
-          # update version text
-          sed -i "s|Latest build:.*|Latest build: $VERSION|" index.html
+          # replace build-info div safely (ALWAYS works)
+          sed -i 's|<div id="build-info">.*</div>|<div id="build-info">Latest build: '"$VERSION"'</div>|' index.html
+
+          echo "Preview:"
+          grep href index.html
+          grep build-info index.html
 
       # ---------------------------------------
       # Commit & push
@@ -59,6 +72,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add index.html
-          git commit -m "auto: update download links + build version" || echo "No changes"
+          git commit -m "auto: update download links + version" || echo "No changes to commit"
           git push
-
