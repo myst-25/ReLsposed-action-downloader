@@ -1,58 +1,87 @@
-name: Fetch ReLSPosed artifact → Telegram
+name: Daily ReLSPosed → Telegram
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes
+    - cron: "0 0 * * *"   # 12:00 AM UTC daily
 
 jobs:
-  fetch:
+  fetch-and-send:
     runs-on: ubuntu-latest
 
     steps:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl unzip
 
-      # 🔹 Get latest successful run
-      - name: Get latest successful run id
-        id: run
+      # ------------------------------------------------
+      # Get latest successful workflow run
+      # ------------------------------------------------
+      - name: Get latest run id
         run: |
           RUN_ID=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs \
             | jq '.workflow_runs[] | select(.conclusion=="success") | .id' \
             | head -n1)
 
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Found run id: $RUN_ID"
+          echo "Latest run: $RUN_ID"
 
-      # 🔹 Get artifact download URL
-      - name: Get artifact URL
+      # ------------------------------------------------
+      # Get ALL artifact download URLs
+      # ------------------------------------------------
+      - name: Get artifact URLs
         run: |
-          ART_URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
-            | jq -r '.artifacts[0].archive_download_url')
+          curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
+            | jq -r '.artifacts[].archive_download_url' > urls.txt
 
-          echo "ART_URL=$ART_URL" >> $GITHUB_ENV
-          echo "Artifact URL: $ART_URL"
+          echo "Artifacts found:"
+          cat urls.txt
 
-      # 🔹 Download artifact
-      - name: Download artifact
+      # ------------------------------------------------
+      # Download all artifacts (AUTH REQUIRED)
+      # ------------------------------------------------
+      - name: Download artifacts
         run: |
-          curl -L "$ART_URL" -o artifact.zip
+          mkdir downloads
+          i=1
+          while read url; do
+            echo "Downloading artifact $i..."
+            curl -L \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "Accept: application/vnd.github+json" \
+              "$url" \
+              -o "downloads/artifact_$i.zip"
+            i=$((i+1))
+          done < urls.txt
 
-      # 🔹 Extract artifact
-      - name: Extract
+      # ------------------------------------------------
+      # Extract everything
+      # ------------------------------------------------
+      - name: Extract artifacts
         run: |
-          unzip artifact.zip -d out
+          mkdir extracted
+          for f in downloads/*.zip; do
+            unzip -o "$f" -d extracted
+          done
 
-      # 🔹 Send to Telegram
+      # ------------------------------------------------
+      # Send ALL build zips to Telegram
+      # ------------------------------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          FILE=$(find out -name "*.zip" | head -n1)
+          FILES=$(find extracted -name "*.zip")
 
-          echo "Sending $FILE to Telegram..."
+          echo "Files to send:"
+          echo "$FILES"
 
-          curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-            -F chat_id="-1002868007272" \
-            -F document=@"$FILE" \
-            -F caption="🚀 New ReLSPosed test build available!"
+          for file in $FILES; do
+            NAME=$(basename "$file")
+
+            echo "Sending $NAME..."
+
+            curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+              -F chat_id="-1002868007272" \
+              -F document=@"$file" \
+              -F caption="🚀 ReLSPosed Daily Build\n📦 $NAME\n🕛 Auto-posted daily"
+          done
