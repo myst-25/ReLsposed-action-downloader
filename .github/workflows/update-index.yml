@@ -13,20 +13,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------------
-      # Checkout repo
-      # ----------------------------
       - uses: actions/checkout@v4
 
-      # ----------------------------
-      # Install jq
-      # ----------------------------
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
-      # ----------------------------
-      # Fetch latest release asset URLs
-      # ----------------------------
+      # ---------------------------------------
+      # Fetch release assets
+      # ---------------------------------------
       - name: Get latest asset links
         run: |
           DATA=$(curl -s \
@@ -35,31 +29,36 @@ jobs:
           DEBUG_URL=$(echo "$DATA" | jq -r '.assets[] | select(.name|contains("debug")) | .browser_download_url')
           RELEASE_URL=$(echo "$DATA" | jq -r '.assets[] | select(.name|contains("release")) | .browser_download_url')
 
+          RELEASE_NAME=$(basename "$RELEASE_URL")
+
+          # extract version (between ReLSPosed- and -zygisk)
+          VERSION=$(echo "$RELEASE_NAME" | sed -E 's/ReLSPosed-(.*)-zygisk.*/\1/')
+
           echo "DEBUG_URL=$DEBUG_URL" >> $GITHUB_ENV
           echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          echo "Debug: $DEBUG_URL"
-          echo "Release: $RELEASE_URL"
-
-      # ----------------------------
-      # Replace links inside index.html
-      # ----------------------------
-      - name: Update index.html
+      # ---------------------------------------
+      # Update index.html
+      # ---------------------------------------
+      - name: Update links + version text
         run: |
+          # update download links
           sed -i "s|href=\".*release.*zip\"|href=\"$RELEASE_URL\"|" index.html
           sed -i "s|href=\".*debug.*zip\"|href=\"$DEBUG_URL\"|" index.html
 
-          echo "Updated links:"
-          grep href index.html
+          # update version text
+          sed -i "s|Latest build:.*|Latest build: $VERSION|" index.html
 
-      # ----------------------------
-      # Commit & push if changed
-      # ----------------------------
+      # ---------------------------------------
+      # Commit & push
+      # ---------------------------------------
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add index.html
-          git commit -m "auto: update download links to latest build" || echo "No changes to commit"
+          git commit -m "auto: update download links + build version" || echo "No changes"
           git push
+
