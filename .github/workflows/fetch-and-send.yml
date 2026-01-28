@@ -8,25 +8,23 @@
     DEBUG_NAME=$(basename "$DEBUG")
     RELEASE_NAME=$(basename "$RELEASE")
 
-    # Build caption safely (no multiline strings)
-    echo "$DEBUG_NAME" > caption.txt
-    echo "$RELEASE_NAME" >> caption.txt
-    echo "" >> caption.txt
-    echo "release date: $RUN_DATE" >> caption.txt
-    echo "bot release date: $BOT_DATE" >> caption.txt
-    echo "" >> caption.txt
-    echo "by @Myst_25" >> caption.txt
+    CAPTION="$DEBUG_NAME
+$RELEASE_NAME
 
-    TEXT=$(cat caption.txt)
+release date: $RUN_DATE
+bot release date: $BOT_DATE
 
-    MEDIA=$(jq -n \
-      --arg t "$TEXT" \
-      '[{"type":"document","media":"attach://file1","caption":$t},
-        {"type":"document","media":"attach://file2"}]')
+by @Myst_25"
 
-    curl -sS -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMediaGroup" \
+    # Send debug with caption
+    curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
       -F chat_id="-1002868007272" \
       -F message_thread_id="384" \
-      -F media="$MEDIA" \
-      -F file1=@"$DEBUG" \
-      -F file2=@"$RELEASE"
+      -F document=@"$DEBUG" \
+      -F caption="$CAPTION"
+
+    # Send release without caption
+    curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+      -F chat_id="-1002868007272" \
+      -F message_thread_id="384" \
+      -F document=@"$RELEASE"
