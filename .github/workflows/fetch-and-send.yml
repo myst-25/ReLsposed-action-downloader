@@ -14,7 +14,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq curl
 
       # ---------------------------------------
-      # Get latest successful run info
+      # Get latest run info
       # ---------------------------------------
       - name: Get run info
         run: |
@@ -25,20 +25,21 @@ jobs:
           echo "BOT_DATE=$(date '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_ENV
 
       # ---------------------------------------
-      # Download debug artifact
+      # Download artifacts with ORIGINAL names
       # ---------------------------------------
       - name: Download debug
         run: |
+          NAME=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .name')
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("debug")) | .archive_download_url')
-          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o debug.zip
+          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o "$NAME.zip"
+          echo "DEBUG_FILE=$NAME.zip" >> $GITHUB_ENV
 
-      # ---------------------------------------
-      # Download release artifact
-      # ---------------------------------------
       - name: Download release
         run: |
+          NAME=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .name')
           URL=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts | jq -r '.artifacts[] | select(.name|contains("release")) | .archive_download_url')
-          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o release.zip
+          curl -L -H "Authorization: Bearer ${{ github.token }}" "$URL" -o "$NAME.zip"
+          echo "RELEASE_FILE=$NAME.zip" >> $GITHUB_ENV
 
       # ---------------------------------------
       # Send debug (separate message)
@@ -50,8 +51,8 @@ jobs:
           curl -sS https://api.telegram.org/bot$BOT_TOKEN/sendDocument \
             -F chat_id=-1002868007272 \
             -F message_thread_id=384 \
-            -F document=@debug.zip \
-            -F caption=$'debug.zip\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
+            -F document=@"$DEBUG_FILE" \
+            -F caption=$"$DEBUG_FILE"$'\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
 
       # ---------------------------------------
       # Send release (separate message)
@@ -63,5 +64,5 @@ jobs:
           curl -sS https://api.telegram.org/bot$BOT_TOKEN/sendDocument \
             -F chat_id=-1002868007272 \
             -F message_thread_id=384 \
-            -F document=@release.zip \
-            -F caption=$'release.zip\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
+            -F document=@"$RELEASE_FILE" \
+            -F caption=$"$RELEASE_FILE"$'\n\nrelease date: '"$RUN_DATE"$'\nbot release date: '"$BOT_DATE"$'\n\nby @Myst_25'
