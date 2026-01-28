@@ -10,12 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install tools
+      # ----------------------------------------
+      # Install tools
+      # ----------------------------------------
+      - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq curl unzip
 
-      # ------------------------------------------------
-      # Get latest successful workflow run
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Get latest successful workflow run id
+      # ----------------------------------------
       - name: Get latest run id
         run: |
           RUN_ID=$(curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs \
@@ -25,20 +28,20 @@ jobs:
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "Latest run: $RUN_ID"
 
-      # ------------------------------------------------
-      # Get ALL artifact download URLs
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Get all artifact download URLs
+      # ----------------------------------------
       - name: Get artifact URLs
         run: |
           curl -s https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
             | jq -r '.artifacts[].archive_download_url' > urls.txt
 
-          echo "Artifacts found:"
+          echo "Artifacts:"
           cat urls.txt
 
-      # ------------------------------------------------
-      # Download all artifacts (AUTH REQUIRED)
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Download artifacts (requires auth header)
+      # ----------------------------------------
       - name: Download artifacts
         run: |
           mkdir downloads
@@ -53,9 +56,9 @@ jobs:
             i=$((i+1))
           done < urls.txt
 
-      # ------------------------------------------------
-      # Extract everything
-      # ------------------------------------------------
+      # ----------------------------------------
+      # Extract all artifacts
+      # ----------------------------------------
       - name: Extract artifacts
         run: |
           mkdir extracted
@@ -63,9 +66,12 @@ jobs:
             unzip -o "$f" -d extracted
           done
 
-      # ------------------------------------------------
-      # Send ALL build zips to Telegram
-      # ------------------------------------------------
+          echo "Extracted files:"
+          ls -R extracted
+
+      # ----------------------------------------
+      # Send ALL build zips to Telegram topic
+      # ----------------------------------------
       - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -78,10 +84,11 @@ jobs:
           for file in $FILES; do
             NAME=$(basename "$file")
 
-            echo "Sending $NAME..."
+            echo "Sending $NAME to Telegram..."
 
             curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
               -F chat_id="-1002868007272" \
+              -F message_thread_id="384" \
               -F document=@"$file" \
-              -F caption="🚀 ReLSPosed Daily Build\n📦 $NAME\n🕛 Auto-posted daily"
+              -F caption="🚀 ReLSPosed Daily Build\n📦 $NAME\n🕛 Auto-posted at 12AM"
           done
