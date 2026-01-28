@@ -6,19 +6,19 @@ on:
     - cron: "0 0 * * *"   # 12:00 AM UTC daily
 
 jobs:
-  send-builds:
+  send-build:
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------------------
-      # Install dependencies
-      # -----------------------------
-      - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y jq curl unzip
+      # ------------------------------------------------
+      # Install tools
+      # ------------------------------------------------
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq curl unzip zip
 
-      # -----------------------------
-      # Get latest successful run of core.yml ONLY
-      # -----------------------------
+      # ------------------------------------------------
+      # Get latest successful run from core.yml only
+      # ------------------------------------------------
       - name: Get latest run id
         run: |
           RUN_ID=$(curl -s \
@@ -27,24 +27,24 @@ jobs:
             | head -n1)
 
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run id: $RUN_ID"
+          echo "Latest run: $RUN_ID"
 
-      # -----------------------------
-      # Get artifact download URLs
-      # -----------------------------
+      # ------------------------------------------------
+      # Get artifact URLs
+      # ------------------------------------------------
       - name: Get artifact URLs
         run: |
           curl -s \
             https://api.github.com/repos/ThePedroo/ReLSPosed/actions/runs/$RUN_ID/artifacts \
             | jq -r '.artifacts[].archive_download_url' > urls.txt
 
-          echo "Artifact URLs:"
+          echo "Artifacts:"
           cat urls.txt
 
-      # -----------------------------
+      # ------------------------------------------------
       # Download + extract artifacts
-      # -----------------------------
-      - name: Download and extract artifacts
+      # ------------------------------------------------
+      - name: Download and extract
         run: |
           mkdir extracted
 
@@ -65,23 +65,27 @@ jobs:
           echo "Extracted files:"
           ls -lh extracted
 
-      # -----------------------------
-      # Send ONLY debug + release builds
-      # -----------------------------
-      - name: Send builds to Telegram
+      # ------------------------------------------------
+      # Repack into flashable module zip
+      # ------------------------------------------------
+      - name: Create flashable zip
+        run: |
+          cd extracted
+          zip -r ../ReLSPosed-latest-build.zip ./*
+          cd ..
+
+          echo "Created zip:"
+          ls -lh ReLSPosed-latest-build.zip
+
+      # ------------------------------------------------
+      # Send to Telegram topic
+      # ------------------------------------------------
+      - name: Send to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          for file in extracted/*; do
-            NAME=$(basename "$file")
-
-            if [[ "$NAME" == *debug* || "$NAME" == *release* ]]; then
-              echo "Sending $NAME to Telegram"
-
-              curl -sS "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-                -F chat_id="-1002868007272" \
-                -F message_thread_id="384" \
-                -F document=@"$file" \
-                -F caption="🚀 ReLSPosed Daily Build\n📦 $NAME\n🕛 Auto-posted"
-            fi
-          done
+          curl -v "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+            -F chat_id="-1002868007272" \
+            -F message_thread_id="384" \
+            -F document=@ReLSPosed-latest-build.zip \
+            -F caption="🚀 ReLSPosed Daily Build\n📦 Flashable module\n🕛 Auto-posted"
