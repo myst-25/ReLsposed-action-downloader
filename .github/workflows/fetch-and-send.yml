@@ -1,6 +1,6 @@
-name: ReLSPosed → Telegram + Release
+#name: ReLSPosed → Telegram + Release
 
-on:
+#on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
